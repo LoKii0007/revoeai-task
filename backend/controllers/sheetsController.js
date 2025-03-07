@@ -1,18 +1,9 @@
 
-import serviceAccount from "../google-service-account.json" assert { type: "json" };
 import { google } from "googleapis";
 import dotenv from "dotenv"
 import SheetData from "../models/Sheet.js";
 import { io } from "../server.js";
 dotenv.config();
-
-
-const auth = new google.auth.GoogleAuth({
-  credentials: serviceAccount,
-  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-});
-
-const sheets = google.sheets({ version: "v4", auth });
 
 
 //? to get the sheet data from google sheets
