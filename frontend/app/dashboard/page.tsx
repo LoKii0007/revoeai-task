@@ -72,8 +72,7 @@ export default function DashboardPage() {
 
 
   useEffect(() => {
-    console.log("socket", socket);
-    socket.on('data', (data: any) => {
+    socket.on('sheetDataUpdated', (data: any) => {
       console.log(data);
     });
   }, [socket]);
