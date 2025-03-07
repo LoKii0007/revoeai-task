@@ -4,7 +4,15 @@ import SheetData from "../models/Sheet.js";
 import { io } from "../server.js";
 dotenv.config();
 
-//? to get the sheet data from google sheets
+// const auth = new google.auth.GoogleAuth({
+//   credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+//   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+// });
+
+// const sheets = google.sheets({ version: "v4", auth });
+
+
+// //? to get the sheet data from google sheets
 // async function fetchSheetData(spreadsheetId, range) {
 //   try {
 //     const response = await sheets.spreadsheets.values.get({
@@ -25,23 +33,6 @@ export async function updateSheetData(req, res) {
     const { range, values, sheetName } = req.body;
 
     console.log(`Update received for ${sheetName}, range: ${range}`);
-    console.log('body', req.body);
-
-    // Get the current sheet data from DB
-    let sheetData = await SheetData.findOne({ sheetName });
-
-    // if (!sheetData) {
-    //   // Initialize with empty data if not exists
-    //   sheetData = new SheetData({
-    //     sheetId: process.env.SPREADSHEET_ID,
-    //     sheetName,
-    //     data: [],
-    //     lastUpdated: new Date()
-    //   });
-    // }
-
-    // Get full sheet data
-    // await updateFullSheetData(sheetData, range, values);
 
     // Send real-time update to clients
     io.emit("sheetDataUpdated", {

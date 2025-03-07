@@ -29,22 +29,6 @@ export default function DashboardPage() {
   const socket = useSocket();
   const [sheetData, setSheetData] = useState<any>(null);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    }
-  }, [isAuthenticated, router]);
-
-  useEffect(() => {
-    socket.on("sheetDataUpdated", (data: any) => {
-      setSheetData(data);
-    });
-
-    return () => {
-      socket.off("sheetDataUpdated");
-    };
-  }, [socket]);
-
   const handleLogout = () => {
     logout();
     router.push("/login");
@@ -52,28 +36,34 @@ export default function DashboardPage() {
 
   const handleAddRow = () => {
     if (tableData) {
-      setTableData({
-        ...tableData,
-        rows: [...tableData.rows, {}],
-      });
+      const newRow = [tableData.columns.map((col, i) => ({
+        [getObjectKey(i, tableData.rows.length)]: "",
+      }))];
+
+      setTableData((prev: any) => ({
+        ...prev,
+        rows: [...prev.rows, ...newRow],
+      }));
     }
   };
 
+  function getObjectKey(colIndex: number, rowIndex: number) {
+    return String.fromCharCode(65 + colIndex) + (rowIndex + 1).toString();
+  }
+
   const handleInputChange = (
     rowIndex: number,
-    header: string,
+    colIndex: number,
     value: string
   ) => {
     if (tableData) {
-      const newRows = [...tableData.rows];
-      newRows[rowIndex] = {
-        ...newRows[rowIndex],
-        [header]: value,
-      };
-      setTableData({
-        ...tableData,
-        rows: newRows,
-      });
+      setTableData((prev: any) => ({
+        ...prev,
+        rows: prev?.rows.map((row: any, idx: number) => (idx === rowIndex ? {
+          ...row,
+          [getObjectKey(colIndex, rowIndex)]: value,
+        } : row)),
+      }));
     }
   };
 
@@ -81,22 +71,34 @@ export default function DashboardPage() {
     return null;
   }
 
-  // useEffect(() => {
-  //   if (!sheetData) return ;
 
-  //   const colIndex = sheetData.updatedRange.charAt(0)
-  //   const rowIndex = sheetData.updatedRange.charAt(1)
-  //   // @ts-ignore
-  //   setTableData((prev)=> {...prev, rows[rowIndex][colIndex -101] = sheetData.data[0]  } )
-    
-  // }, [sheetData]);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
 
 
-  useEffect(()=>{
-    console.log(tableData)
-  }, [tableData])
+  useEffect(() => {
+    socket.on("sheetDataUpdated", (data: any) => {
+      console.log(data);
+      const rowIndex = data.range.charAt(1);
+      const colIndex = data.range.charAt(0);
+      const value = data.values[0][0];
+      setTableData((prev: any) => ({
+        ...prev,
+        rows: prev?.rows.map((row: any, idx: number) => (idx === rowIndex ? {
+          ...row,
+          [colIndex]: value,
+        } : row)),
+      }));
+    });
 
-  
+    return () => {
+      socket.off("sheetDataUpdated");
+    };
+  }, [socket]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow-sm">
@@ -185,11 +187,13 @@ export default function DashboardPage() {
                         >
                           <Input
                             type={column.type}
-                            value={row[column.header] || ""}
+                            value={
+                              row[String.fromCharCode(65 + colIndex) + (rowIndex + 1).toString()] || ""
+                            }
                             onChange={(e) =>
                               handleInputChange(
                                 rowIndex,
-                                column.header,
+                                colIndex,
                                 e.target.value
                               )
                             }

@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/select";
 import { DialogFooter } from "@/components/ui/dialog";
 
-
 const AddTableDialog = ({
   setTableData,
   open,
@@ -33,7 +32,13 @@ const AddTableDialog = ({
 
   const handleCreateTable = () => {
     //@ts-ignore
-    setTableData((prev ) => ({ ...prev, columns: [...prev.columns, newColumn] }));
+    setTableData((prev) => ({
+      columns: [...prev.columns, newColumn],
+      rows: prev.rows.map((row: any, i: number) => ({
+        ...row,
+        [String.fromCharCode(65 + prev.columns.length) + (i + 1).toString()]: "",
+      })),
+    }));
     setOpen(false);
   };
 
@@ -45,30 +50,30 @@ const AddTableDialog = ({
             <DialogTitle>Add New Column</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-2">
-                <Input
-                  required
-                  placeholder="Column Header"
-                  value={newColumn.header}
-                  onChange={(e) =>
-                    setNewColumn({ ...newColumn, header: e.target.value })
-                  }
-                />
-                <Select
-                  value={newColumn.type}
-                  onValueChange={(value) =>
-                    setNewColumn({ ...newColumn, type: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Text</SelectItem>
-                    <SelectItem value="date">Date</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                required
+                placeholder="Column Header"
+                value={newColumn.header}
+                onChange={(e) =>
+                  setNewColumn({ ...newColumn, header: e.target.value })
+                }
+              />
+              <Select
+                value={newColumn.type}
+                onValueChange={(value) =>
+                  setNewColumn({ ...newColumn, type: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Text</SelectItem>
+                  <SelectItem value="date">Date</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button

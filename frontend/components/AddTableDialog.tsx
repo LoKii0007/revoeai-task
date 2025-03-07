@@ -54,7 +54,9 @@ const AddTableDialog = ({
   const handleCreateTable = () => {
     setTableData({
       columns: columns,
-      rows: [{}],
+      rows: [columns.map((col, i)=> ({
+        [String.fromCharCode(65 + i)+ '1']: ""
+      }))],
     });
     setOpen(false);
   };

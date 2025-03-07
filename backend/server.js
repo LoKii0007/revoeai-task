@@ -12,16 +12,17 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// Define CORS origins once to ensure consistency
+
 const allowedOrigins = [process.env.FRONTEND_URL , "http://localhost:3000", "http://localhost:5173"];
 
-// Configure Express middleware
+
 app.use(cors({
   origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
+
 
 // Configure Socket.IO
 export const io = new Server(server, {
@@ -50,14 +51,17 @@ io.on("error", (err) => {
   console.error("Socket.IO server error:", err);
 });
 
-// Connect to database
+
+//? Connect to database
 connectDB();
 
-// API routes
+
+//? API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/sheets", sheetsRoutes);
 
-// Start server
+
+//? Start server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
