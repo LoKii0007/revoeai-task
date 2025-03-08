@@ -2,7 +2,6 @@ import Table from "../models/Table.js";
 
 export const createTable = async (req, res) => {
   try {
-    console.log("req.userId", req.userId);
     const { columns, rows } = req.body;
     const existingTable = await Table.findOne({ userId: req.userId });
     if (existingTable) {
@@ -21,29 +20,28 @@ export const getTable = async (req, res) => {
   try {
     const table = await Table.find({ userId: req.userId });
     if (table.length === 0) {
-      res.status(404).json({ error: "Table not found." });
+      return res.status(400).json({ error: "Table not found." });
     } else {
-      res.status(200).json({ tableData: table });
+      return res.status(200).json({ tableData: table });
     }
   } catch (error) {
-    res.status(404).json({ error: "Table not found." });
+    return res.status(404).json({ error: "Table not found." });
   }
 };
 
 export const updateTable = async (req, res) => {
   try {
     const { columns, rows } = req.body;
-    const updatedTable = await Table.findOneAndUpdate(
-      { userId: req.userId },
-      { columns, rows },
-      { new: true }
-    );
-    if (!updatedTable) {
-      res.status(404).json({ error: "Table not found." });
+    const table = await Table.findOne({ userId: req.userId });
+    if (!table) {
+      const newTable = new Table({ columns, rows, userId: req.userId });
+      await newTable.save();
+      return res.status(200).json(newTable);
     }
-    res.status(200).json(updatedTable);
+    table.columns = columns;
+    return res.status(200).json(table);
   } catch (error) {
-    res.status(500).json({ error: "Failed to update table data." });
+    return res.status(500).json({ error: "Failed to update table data." });
   }
 };
 
@@ -51,10 +49,10 @@ export const deleteTable = async (req, res) => {
   try {
     const deletedTable = await Table.findOneAndDelete({ userId: req.userId });
     if (!deletedTable) {
-      res.status(404).json({ error: "Table not found." });
+      return res.status(404).json({ error: "Table not found." });
     }
-    res.status(200).json(deletedTable);
+    return res.status(200).json(deletedTable);
   } catch (error) {
-    res.status(500).json({ error: "Failed to delete table data." });
+    return res.status(500).json({ error: "Failed to delete table data." });
   }
 };

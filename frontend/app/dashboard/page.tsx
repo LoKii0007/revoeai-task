@@ -40,7 +40,7 @@ export default function DashboardPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [debouncedTableData] = useDebounce(tableData, 1000);
+  const [debouncedTableData] = useDebounce(tableData, 500);
 
   const handleLogout = () => {
     logout();
@@ -161,17 +161,12 @@ export default function DashboardPage() {
           validateStatus: (status) => status < 500,
         }
       );
-      if (res.status !== 200) {
-        toast({
-          title: "Error",
-          description: "Failed to fetch table data",
-          variant: "destructive",
+      if (res.status === 200) {
+        setTableData({
+          columns: res.data.tableData[0].columns,
+          rows: res.data.tableData[0].rows,
         });
       }
-      setTableData({
-        columns: res.data.tableData[0].columns,
-        rows: res.data.tableData[0].rows,
-      });
     } catch (error) {
       toast({
         title: "Error",
@@ -260,13 +255,15 @@ export default function DashboardPage() {
           return prev;
         }
 
-        const rowIndex = parseInt(data.updatedRange.charAt(1));
+        const rowIndex = parseInt(data.updatedRange.slice(1));
         const colIndex = data.updatedRange.charAt(0);
         const value = data.data[0][0];
 
         let updatedRows = [...prev.rows];
 
+        console.log(data.updatedRange);
         // If the rowIndex is greater than current rows length, add new rows
+        console.log(rowIndex, updatedRows.length);
         if (rowIndex > updatedRows.length) {
           let newRow: Record<string, string> = {};
           for (let i = updatedRows.length; i < rowIndex; i++) {
@@ -315,153 +312,162 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <h1 className="text-xl font-semibold text-gray-900">
-              Dynamic Table Dashboard
-            </h1>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">
-                Welcome, {user?.name}
-              </span>
-              <Button
-                variant="outline"
-                onClick={handleLogout}
-                className="flex items-center space-x-2"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>Logout</span>
-              </Button>
-            </div>
-          </div>
+      {isLoading ? (
+        <div className="flex justify-center items-center h-screen">
+          <Loader2 className="h-10 w-10 animate-spin" />
         </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex justify-end items-center gap-6">
-          {tableData === null && (
-            <Button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center space-x-2"
-            >
-              <Table className="h-4 w-4" />
-              <span>Create Table</span>
-            </Button>
-          )}
-
-          <Button
-            onClick={() => fetchSheetData()}
-            className="flex items-center space-x-2 w-[170px]"
-          >
-            {isFetching ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <Table className="h-4 w-4" />
-                <span>Fetch Sheet Data</span>
-              </>
-            )}
-          </Button>
-
-          {/* // dialog for creating a table */}
-          <AddTableDialog
-            setTableData={setTableData}
-            open={isModalOpen}
-            setOpen={setIsModalOpen}
-            createTable={createTable}
-            isCreating={isCreating}
-          />
-
-          {tableData !== null && (
-            <Button
-              onClick={() => setIsColumnModalOpen(true)}
-              className="flex items-center space-x-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Add Column</span>
-            </Button>
-          )}
-
-          {tableData !== null && (
-            <Button
-              onClick={() => deleteTableData()}
-              disabled={isDeleting}
-              className="flex items-center space-x-2 bg-red-500"
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <>
-                  <Trash className="h-4 w-4" />
-                  <span>Delete Table</span>
-                </>
+      ) : (
+        <>
+          <nav className="bg-white shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+              <div className="flex justify-between items-center">
+                <h1 className="text-xl font-semibold text-gray-900">
+                  Dynamic Table Dashboard
+                </h1>
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-600">
+                    Welcome, {user?.name}
+                  </span>
+                  <Button
+                    variant="outline"
+                    onClick={handleLogout}
+                    className="flex items-center space-x-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Logout</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </nav>
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="mb-6 flex justify-end items-center gap-6">
+              {tableData === null && (
+                <Button
+                  onClick={() => setIsModalOpen(true)}
+                  className="flex items-center space-x-2"
+                >
+                  <Table className="h-4 w-4" />
+                  <span>Create Table</span>
+                </Button>
               )}
-            </Button>
-          )}
 
-          {/* // dialog for adding a column */}
-          <AddColumnDialog
-            setTableData={setTableData}
-            open={isColumnModalOpen}
-            setOpen={setIsColumnModalOpen}
-          />
-        </div>
-
-        {tableData && (
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {tableData?.columns?.map((column, index) => (
-                      <th
-                        key={index}
-                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {column.header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {tableData?.rows?.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {tableData?.columns?.map((column, colIndex) => (
-                        <td
-                          key={colIndex}
-                          className="px-6 py-4 whitespace-nowrap"
-                        >
-                          <Input
-                            type={column.type}
-                            value={row[getObjectKey(colIndex, rowIndex)] || ""}
-                            onChange={(e) =>
-                              handleInputChange(
-                                rowIndex,
-                                colIndex,
-                                e.target.value
-                              )
-                            }
-                          />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="p-4 border-t">
               <Button
-                onClick={handleAddRow}
-                className="flex items-center space-x-2"
+                onClick={() => fetchSheetData()}
+                className="flex items-center space-x-2 w-[170px]"
               >
-                <Plus className="h-4 w-4" />
-                <span>Add Row</span>
+                {isFetching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Table className="h-4 w-4" />
+                    <span>Fetch Sheet Data</span>
+                  </>
+                )}
               </Button>
+
+              {/* // dialog for creating a table */}
+              <AddTableDialog
+                setTableData={setTableData}
+                open={isModalOpen}
+                setOpen={setIsModalOpen}
+                createTable={createTable}
+                isCreating={isCreating}
+              />
+
+              {tableData !== null && (
+                <Button
+                  onClick={() => setIsColumnModalOpen(true)}
+                  className="flex items-center space-x-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Add Column</span>
+                </Button>
+              )}
+
+              {tableData !== null && (
+                <Button
+                  onClick={() => deleteTableData()}
+                  disabled={isDeleting}
+                  className="flex items-center space-x-2 bg-red-500"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash className="h-4 w-4" />
+                      <span>Delete Table</span>
+                    </>
+                  )}
+                </Button>
+              )}
+
+              {/* // dialog for adding a column */}
+              <AddColumnDialog
+                setTableData={setTableData}
+                open={isColumnModalOpen}
+                setOpen={setIsColumnModalOpen}
+              />
             </div>
-          </div>
-        )}
-      </main>
+
+            {tableData && (
+              <div className="bg-white shadow rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {tableData?.columns?.map((column, index) => (
+                          <th
+                            key={index}
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            {column.header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {tableData?.rows?.map((row, rowIndex) => (
+                        <tr key={rowIndex}>
+                          {tableData?.columns?.map((column, colIndex) => (
+                            <td
+                              key={colIndex}
+                              className="px-6 py-4 whitespace-nowrap"
+                            >
+                              <Input
+                                type={column.type}
+                                value={
+                                  row[getObjectKey(colIndex, rowIndex)] || ""
+                                }
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    rowIndex,
+                                    colIndex,
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="p-4 border-t">
+                  <Button
+                    onClick={handleAddRow}
+                    className="flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Row</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </main>
+        </>
+      )}
     </div>
   );
 }

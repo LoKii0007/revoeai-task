@@ -54,7 +54,8 @@ const AddTableDialog = ({
     setColumns(newColumns);
   };
 
-  const handleCreateTable = () => {
+  const handleCreateTable = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     let rows: Record<string, string> = {};
     columns.forEach((col, i) => {
       rows[String.fromCharCode(65 + i) + "1"] = "";
@@ -75,7 +76,7 @@ const AddTableDialog = ({
           <DialogHeader>
             <DialogTitle>Create New Table</DialogTitle>
           </DialogHeader>
-          <form action={handleCreateTable}>
+          <form onSubmit={handleCreateTable}>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Number of Columns</label>
