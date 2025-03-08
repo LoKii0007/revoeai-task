@@ -24,10 +24,14 @@ const AddTableDialog = ({
   setTableData,
   open,
   setOpen,
+  createTable,
+  isCreating,
 }: {
   setTableData: (data: { columns: any[]; rows: any[] }) => void;
   open: boolean;
   setOpen: (open: boolean) => void;
+  createTable: (columns: any[], rows: any[]) => void;
+  isCreating: boolean;
 }) => {
   const [columnCount, setColumnCount] = useState(1);
   const [columns, setColumns] = useState([{ header: "", type: "text" }]);
@@ -52,12 +56,16 @@ const AddTableDialog = ({
   };
 
   const handleCreateTable = () => {
+    let rows: Record<string, string> = {}
+    columns.forEach((col, i) => {
+      rows[String.fromCharCode(65 + i) + '1'] = "";
+    });
+    
     setTableData({
       columns: columns,
-      rows: [columns.map((col, i)=> ({
-        [String.fromCharCode(65 + i)+ '1']: ""
-      }))],
+      rows: [rows],
     });
+    createTable(columns, [rows]);
     setOpen(false);
   };
 
@@ -114,7 +122,9 @@ const AddTableDialog = ({
             >
               Cancel
             </Button>
-            <Button onClick={handleCreateTable}>Create Table</Button>
+            <Button onClick={handleCreateTable} disabled={isCreating}>
+              {isCreating ? "Creating..." : "Create Table"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

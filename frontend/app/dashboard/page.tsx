@@ -2,13 +2,17 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Plus, Table, X } from "lucide-react";
+import { Loader2, LogOut, Plus, Table, X, Trash } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import AddTableDialog from "@/components/AddTableDialog";
 import AddColumnDialog from "@/components/AddColumnDialog";
 import { useSocket } from "@/hooks/useSocket";
+import axios from "axios";
+import { useToast } from "@/hooks/use-toast";
+import { processSpreadsheetData } from "@/utils/helper";
+import { useDebounce } from "use-debounce";
 
 interface Column {
   header: string;
@@ -22,27 +26,38 @@ interface TableData {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [tableData, setTableData] = useState<TableData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
   const socket = useSocket();
-  const [sheetData, setSheetData] = useState<any>(null);
+  const { toast } = useToast();
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("taskToken") || ""
+      : "";
+  const [isFetching, setIsFetching] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [debouncedTableData] = useDebounce(tableData, 1000);
 
   const handleLogout = () => {
     logout();
+    localStorage.removeItem("taskToken");
     router.push("/login");
   };
 
   const handleAddRow = () => {
     if (tableData) {
-      const newRow = [tableData.columns.map((col, i) => ({
-        [getObjectKey(i, tableData.rows.length)]: "",
-      }))];
+      let newRow: Record<string, string> = {};
+      tableData.columns.forEach((col: Column, i: number) => {
+        newRow[getObjectKey(i, tableData.rows.length)] = "";
+      });
 
       setTableData((prev: any) => ({
         ...prev,
-        rows: [...prev.rows, ...newRow],
+        rows: [...prev.rows, newRow],
       }));
     }
   };
@@ -59,45 +74,244 @@ export default function DashboardPage() {
     if (tableData) {
       setTableData((prev: any) => ({
         ...prev,
-        rows: prev?.rows.map((row: any, idx: number) => (idx === rowIndex ? {
-          ...row,
-          [getObjectKey(colIndex, rowIndex)]: value,
-        } : row)),
+        rows: prev?.rows.map((row: any, idx: number) =>
+          idx === rowIndex
+            ? {
+                ...row,
+                [getObjectKey(colIndex, rowIndex)]: value,
+              }
+            : row
+        ),
       }));
     }
   };
 
-  if (!isAuthenticated) {
-    return null;
+  async function fetchSheetData() {
+    try {
+      setIsFetching(true);
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/sheets`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (res.status !== 200) {
+        console.error("some error");
+      }
+      setTableData(processSpreadsheetData(res.data.sheetData));
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch sheet data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFetching(false);
+    }
   }
 
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
+  async function createTable(columns: any[], rows: any[]) {
+    try {
+      setIsCreating(true);
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tables/create`,
+        {
+          columns,
+          rows,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (res.status !== 200) {
+        toast({
+          title: "Error",
+          description: "Failed to create table",
+          variant: "destructive",
+        });
+      }
+      toast({
+        title: "Success",
+        description: "Table created successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create table",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
     }
-  }, [isAuthenticated, router]);
+  }
 
+  async function fetchTableData() {
+    try {
+      setIsLoading(true);
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tables/get`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          validateStatus: (status) => status < 500,
+        }
+      );
+      if (res.status !== 200) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch table data",
+          variant: "destructive",
+        });
+      }
+      setTableData({
+        columns: res.data.tableData[0].columns,
+        rows: res.data.tableData[0].rows,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch table data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
+  async function updateTableData() {
+    try {
+      const res = await axios.put(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tables/update`,
+        {
+          columns: debouncedTableData?.columns,
+          rows: debouncedTableData?.rows,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (res.status !== 200) {
+        toast({
+          title: "Error",
+          description: "Failed to update table data",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update table data",
+        variant: "destructive",
+      });
+    }
+  }
+
+  async function deleteTableData() {
+    try {
+      setIsDeleting(true);
+      const res = await axios.delete(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/tables/delete`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (res.status !== 200) {
+        toast({
+          title: "Error",
+          description: "Failed to delete table data",
+          variant: "destructive",
+        });
+      }
+      toast({
+        title: "Success",
+        description: "Table data deleted successfully",
+      });
+      setTableData(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete table data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  //? socket connection and live updates from google sheet
   useEffect(() => {
+    if (!socket) {
+      return;
+    }
+
     socket.on("sheetDataUpdated", (data: any) => {
-      console.log(data);
-      const rowIndex = data.range.charAt(1);
-      const colIndex = data.range.charAt(0);
-      const value = data.values[0][0];
-      setTableData((prev: any) => ({
-        ...prev,
-        rows: prev?.rows.map((row: any, idx: number) => (idx === rowIndex ? {
-          ...row,
-          [colIndex]: value,
-        } : row)),
-      }));
+      setTableData((prev: any) => {
+        if (!prev || !prev.rows) {
+          console.warn("tableData or rows is null, skipping update");
+          return prev;
+        }
+
+        const rowIndex = parseInt(data.updatedRange.charAt(1));
+        const colIndex = data.updatedRange.charAt(0);
+        const value = data.data[0][0];
+
+        let updatedRows = [...prev.rows];
+
+        // If the rowIndex is greater than current rows length, add new rows
+        if (rowIndex > updatedRows.length) {
+          let newRow: Record<string, string> = {};
+          for (let i = updatedRows.length; i < rowIndex; i++) {
+            prev.columns.forEach((col: Column, idx: number) => {
+              newRow[getObjectKey(idx, i)] = "";
+            });
+            updatedRows.push(newRow);
+          }
+        }
+
+        // update the specific cell in the row
+        if (updatedRows[rowIndex - 1]) {
+          updatedRows[rowIndex - 1] = {
+            ...updatedRows[rowIndex - 1],
+            [colIndex + rowIndex.toString()]: value,
+          };
+        }
+
+        return {
+          ...prev,
+          rows: updatedRows,
+        };
+      });
     });
 
+    // Clean on unmount
     return () => {
       socket.off("sheetDataUpdated");
     };
   }, [socket]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("taskToken");
+    if (!token) {
+      router.push("/login"); // Redirect if no token
+    } else {
+      fetchTableData();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (debouncedTableData) {
+      updateTableData();
+    }
+  }, [debouncedTableData]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -125,7 +339,7 @@ export default function DashboardPage() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex justify-end items-center">
+        <div className="mb-6 flex justify-end items-center gap-6">
           {tableData === null && (
             <Button
               onClick={() => setIsModalOpen(true)}
@@ -136,11 +350,27 @@ export default function DashboardPage() {
             </Button>
           )}
 
+          <Button
+            onClick={() => fetchSheetData()}
+            className="flex items-center space-x-2 w-[170px]"
+          >
+            {isFetching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <>
+                <Table className="h-4 w-4" />
+                <span>Fetch Sheet Data</span>
+              </>
+            )}
+          </Button>
+
           {/* // dialog for creating a table */}
           <AddTableDialog
             setTableData={setTableData}
             open={isModalOpen}
             setOpen={setIsModalOpen}
+            createTable={createTable}
+            isCreating={isCreating}
           />
 
           {tableData !== null && (
@@ -150,6 +380,23 @@ export default function DashboardPage() {
             >
               <Plus className="h-4 w-4" />
               <span>Add Column</span>
+            </Button>
+          )}
+
+          {tableData !== null && (
+            <Button
+              onClick={() => deleteTableData()}
+              disabled={isDeleting}
+              className="flex items-center space-x-2 bg-red-500"
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Trash className="h-4 w-4" />
+                  <span>Delete Table</span>
+                </>
+              )}
             </Button>
           )}
 
@@ -167,7 +414,7 @@ export default function DashboardPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {tableData.columns.map((column, index) => (
+                    {tableData?.columns?.map((column, index) => (
                       <th
                         key={index}
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -178,18 +425,16 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {tableData.rows.map((row, rowIndex) => (
+                  {tableData?.rows?.map((row, rowIndex) => (
                     <tr key={rowIndex}>
-                      {tableData.columns.map((column, colIndex) => (
+                      {tableData?.columns?.map((column, colIndex) => (
                         <td
                           key={colIndex}
                           className="px-6 py-4 whitespace-nowrap"
                         >
                           <Input
                             type={column.type}
-                            value={
-                              row[String.fromCharCode(65 + colIndex) + (rowIndex + 1).toString()] || ""
-                            }
+                            value={row[getObjectKey(colIndex, rowIndex)] || ""}
                             onChange={(e) =>
                               handleInputChange(
                                 rowIndex,

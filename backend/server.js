@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import sheetsRoutes from "./routes/sheetsRoutes.js";
+import tableRoutes from "./routes/tableRoutes.js";
 import { Server } from "socket.io";
 import http from "http";
 dotenv.config();
@@ -13,7 +14,7 @@ const app = express();
 const server = http.createServer(app);
 
 
-const allowedOrigins = [process.env.FRONTEND_URL , "http://localhost:3000", "http://localhost:5173"];
+const allowedOrigins = [process.env.FRONTEND_URL , "http://localhost:5173"];
 
 
 app.use(cors({
@@ -59,6 +60,7 @@ connectDB();
 //? API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/sheets", sheetsRoutes);
+app.use("/api/tables", tableRoutes);
 
 
 //? Start server

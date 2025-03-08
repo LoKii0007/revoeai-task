@@ -1,31 +1,34 @@
 import { google } from "googleapis";
 import dotenv from "dotenv";
-import SheetData from "../models/Sheet.js";
 import { io } from "../server.js";
 dotenv.config();
 
-// const auth = new google.auth.GoogleAuth({
-//   credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-//   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-// });
 
-// const sheets = google.sheets({ version: "v4", auth });
+const auth = new google.auth.GoogleAuth({
+  credentials: {
+    client_email: process.env.SERVICE_ACCOUNT_CLIENT_EMAIL,
+    private_key: process.env.SERVICE_ACCOUNT_PRIVATE_KEY.replace(/\\n/g, "\n"),
+  },
+  scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+});
 
+const sheets = google.sheets({ version: "v4", auth });
 
 // //? to get the sheet data from google sheets
-// async function fetchSheetData(spreadsheetId, range) {
-//   try {
-//     const response = await sheets.spreadsheets.values.get({
-//       spreadsheetId,
-//       range,
-//     });
+export async function getSheetData(req, res) {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.SPREADSHEET_ID,
+      range: "Sheet1",
+    });
 
-//     return response.data.values;
-//   } catch (error) {
-//     console.error('Error fetching sheet data:', error);
-//     throw error;
-//   }
-// }
+    return res.status(200).json({sheetData: response.data.values});
+  } catch (error) {
+    console.error("Error fetching sheet data:", error.message);
+    return res.status(500).json({error: error.message});
+  } 
+}
+
 
 // Function to update database with latest sheet data
 export async function updateSheetData(req, res) {
@@ -47,25 +50,3 @@ export async function updateSheetData(req, res) {
     res.status(500).json({ error: error.message });
   }
 }
-
-export const getSheetData = async (req, res) => {
-  try {
-    const { sheetId } = req.params;
-    const { range } = req.query;
-
-    const sheetData = await SheetData.findOne({ sheetId });
-
-    if (sheetData) {
-      return res.json({
-        data: sheetData.data,
-        lastUpdated: sheetData.lastUpdated,
-      });
-    }
-
-    // If not in database, fetch it
-    const data = await updateSheetData(sheetId, range || "Sheet1");
-    res.json({ data, lastUpdated: new Date() });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};

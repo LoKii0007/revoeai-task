@@ -6,6 +6,6 @@ const router = express.Router();
 
 
 router.post("/update", updateSheetData);
-router.get("/:sheetId", getSheetData);
+router.get("/", authMiddleware, getSheetData);
 
 export default router;

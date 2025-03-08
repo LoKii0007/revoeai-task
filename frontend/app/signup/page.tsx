@@ -37,6 +37,7 @@ export default function SignupPage() {
           variant: 'destructive'
         });
       }
+      localStorage.setItem('taskToken', res.data.token);
       toast({
         title: 'Success',
         description: 'Account created successfully',

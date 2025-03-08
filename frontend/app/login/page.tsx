@@ -36,13 +36,14 @@ export default function LoginPage() {
           variant: 'destructive'
         });
       }
+      localStorage.setItem('taskToken', res.data.token);
       router.push('/dashboard');
       toast({
         title: 'Success',
         description: 'Login successful',
         variant: 'default'
       });
-      login(email, password);
+      login(email, res.data.token, res.data.userId);
     } catch (error) {
       toast({
         title: 'Error',
