@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/select";
 import { DialogFooter } from "@/components/ui/dialog";
 
-
 const AddTableDialog = ({
   setTableData,
   open,
@@ -56,11 +55,11 @@ const AddTableDialog = ({
   };
 
   const handleCreateTable = () => {
-    let rows: Record<string, string> = {}
+    let rows: Record<string, string> = {};
     columns.forEach((col, i) => {
-      rows[String.fromCharCode(65 + i) + '1'] = "";
+      rows[String.fromCharCode(65 + i) + "1"] = "";
     });
-    
+
     setTableData({
       columns: columns,
       rows: [rows],
@@ -76,56 +75,59 @@ const AddTableDialog = ({
           <DialogHeader>
             <DialogTitle>Create New Table</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Number of Columns</label>
-              <Input
-                type="number"
-                min="1"
-                max="10"
-                value={columnCount}
-                onChange={(e) => handleColumnCountChange(e.target.value)}
-              />
-            </div>
-            {columns.map((column, index) => (
-              <div key={index} className="grid grid-cols-2 gap-2">
+          <form action={handleCreateTable}>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Number of Columns</label>
                 <Input
-                  required
-                  placeholder="Column Header"
-                  value={column.header}
-                  onChange={(e) =>
-                    handleColumnChange(index, "header", e.target.value)
-                  }
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={columnCount}
+                  onChange={(e) => handleColumnCountChange(e.target.value)}
                 />
-                <Select
-                  value={column.type}
-                  onValueChange={(value) =>
-                    handleColumnChange(index, "type", value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="text">Text</SelectItem>
-                    <SelectItem value="date">Date</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setOpen(false)}
-              className="mr-2"
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleCreateTable} disabled={isCreating}>
-              {isCreating ? "Creating..." : "Create Table"}
-            </Button>
-          </DialogFooter>
+
+              {columns.map((column, index) => (
+                <div key={index} className="grid grid-cols-2 gap-2">
+                  <Input
+                    required
+                    placeholder="Column Header"
+                    value={column.header}
+                    onChange={(e) =>
+                      handleColumnChange(index, "header", e.target.value)
+                    }
+                  />
+                  <Select
+                    value={column.type}
+                    onValueChange={(value) =>
+                      handleColumnChange(index, "type", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="text">Text</SelectItem>
+                      <SelectItem value="date">Date</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setOpen(false)}
+                className="mr-2"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isCreating}>
+                {isCreating ? "Creating..." : "Create Table"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>

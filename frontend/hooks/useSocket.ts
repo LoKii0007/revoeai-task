@@ -5,7 +5,7 @@ export const useSocket = () => {
   const [socket, setSocket] = useState<any | null>(null);
 
   useEffect(() => {
-    const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000");
+    const newSocket = io("https://revoeai-task.onrender.com");
 
     newSocket.on("connect", () => {
       console.log("Connected to socket");
